@@ -192,6 +192,29 @@ param(
     return $certificateGenerator
 }
 
+function Add-ExtendedKeyUsage
+{
+[CmdletBinding()]
+param(
+    [Parameter(Mandatory = $true, ValueFromPipeline = $true)]
+    [Org.BouncyCastle.X509.X509V3CertificateGenerator] $certificateGenerator,
+
+    [Parameter(Position = 0, Mandatory = $false, ValueFromPipeline = $false)]
+    [string[]] $Oid = $null
+)
+
+    [Org.BouncyCastle.Asn1.Asn1Object[]] $usages = @()
+    $Oid | % { $usages += New-Object Org.BouncyCastle.Asn1.DerObjectIdentifier($_) }
+    $extendedKeyUsage = New-Object Org.BouncyCastle.Asn1.X509.ExtendedKeyUsage(,$usages)
+
+    $certificateGenerator.AddExtension(
+        [Org.BouncyCastle.Asn1.X509.X509Extensions]::ExtendedKeyUsage.Id,
+        $false,
+        $extendedKeyUsage)
+
+    return $certificateGenerator
+}
+
 function New-Certificate
 {
 param(
