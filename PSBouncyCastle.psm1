@@ -10,9 +10,19 @@ $assemblyPath = switch -wildcard ($PSVersionTable.CLRVersion) {
 
 Add-Type -Path (Join-Path $thisFolder $assemblyPath)
 
-function New-SerialNumber(
-    [Org.BouncyCastle.Security.SecureRandom] $random)
+<#
+.SYNOPSIS
+
+Create a new (random) serial number, suitable for use with an X.509 certificate.
+#>
+function New-SerialNumber
 {
+param(
+    # Allows you to specify the random number generator to be used. If not specified, a new one is created.
+    [Parameter(Mandatory = $false)]
+    [Org.BouncyCastle.Security.SecureRandom] $Random = (New-SecureRandom)
+)
+    
     $serialNumber =
         [Org.BouncyCastle.Utilities.BigIntegers]::CreateRandomInRange(
             [Org.BouncyCastle.Math.BigInteger]::One,
@@ -36,17 +46,24 @@ function New-SecureRandom
     return $random
 }
 
+<#
+.SYNOPSIS
+
+Generate an RSA key pair suitable for use with an X.509 certificate.
+#>
 function New-KeyPair
 {
 param(
-    [Parameter(Mandatory = $true)]
-    [Org.BouncyCastle.Security.SecureRandom] $random,
-
+    # Allows you to specify the random number generator to be used. If not specified, a new one is created.
     [Parameter(Mandatory = $false)]
-    [int] $strength = 2048
+    [Org.BouncyCastle.Security.SecureRandom] $Random = (New-SecureRandom),
+
+    # The strength (in bits) of the RSA key generated. Defaults to 2048 bits.
+    [Parameter(Mandatory = $false)]
+    [int] $Strength = 2048
 )
 
-    $keyGenerationParameters = New-Object Org.BouncyCastle.Crypto.KeyGenerationParameters($random, $strength)
+    $keyGenerationParameters = New-Object Org.BouncyCastle.Crypto.KeyGenerationParameters($Random, $Strength)
 
     $keyPairGenerator = New-Object Org.BouncyCastle.Crypto.Generators.RsaKeyPairGenerator
     $keyPairGenerator.Init($keyGenerationParameters)
@@ -89,6 +106,16 @@ param(
     $stream.Dispose()
 
     return $result
+}
+
+function ConvertTo-BouncyCastleKeyPair
+{
+param(
+    [Parameter(Mandatory = $true)]
+    [System.Security.Cryptography.AsymmetricAlgorithm] $PrivateKey
+)
+
+    return [Org.BouncyCastle.Security.DotNetUtilities]::GetKeyPair($PrivateKey)
 }
 
 function New-AuthorityKeyIdentifier
@@ -276,58 +303,138 @@ function New-Certificate
 {
 param(
     [Parameter(Mandatory = $true)]
-    [Org.BouncyCastle.Security.SecureRandom] $random,
+    [Org.BouncyCastle.Security.SecureRandom] $Random,
 
     [Parameter(Mandatory = $true)]
-    [string] $issuerName,
+    [string] $IssuerName,
 
     [Parameter(Mandatory = $true)]
-    [Org.BouncyCastle.Crypto.AsymmetricCipherKeyPair] $issuerKeyPair,
+    [Org.BouncyCastle.Crypto.AsymmetricCipherKeyPair] $IssuerKeyPair,
 
     [Parameter(Mandatory = $true)]
-    [Org.BouncyCastle.Math.BigInteger] $issuerSerialNumber,
+    [Org.BouncyCastle.Math.BigInteger] $IssuerSerialNumber,
 
     [Parameter(Mandatory = $true)]
-    [string] $subjectName,
+    [string] $SubjectName,
 
     [Parameter(Mandatory = $true)]
-    [Org.BouncyCastle.Crypto.AsymmetricCipherKeyPair] $subjectKeyPair,
+    [Org.BouncyCastle.Crypto.AsymmetricCipherKeyPair] $SubjectKeyPair,
 
     [Parameter(Mandatory = $true)]
-    [Org.BouncyCastle.Math.BigInteger] $subjectSerialNumber,
+    [Org.BouncyCastle.Math.BigInteger] $SubjectSerialNumber,
 
     [Parameter(Mandatory = $true)]
-    [bool] $isCA
+    [Alias("IsCertificateAuthority")]
+    [bool] $IsCA,
+
+    [Parameter(Mandatory = $false)]
+    [string[]] $Eku
 )
 
     $certificateGenerator = New-CertificateGenerator
    
-    $certificateGenerator.SetSerialNumber($subjectSerialNumber)
+    $certificateGenerator.SetSerialNumber($SubjectSerialNumber)
 
     $signatureAlgorithm = "SHA256WithRSA"
     $certificateGenerator.SetSignatureAlgorithm($signatureAlgorithm)
 
-    $issuerDN = New-Object Org.BouncyCastle.Asn1.X509.X509Name($issuerName)
+    $issuerDN = New-Object Org.BouncyCastle.Asn1.X509.X509Name($IssuerName)
     $certificateGenerator.SetIssuerDN($issuerDN)
 
-    $subjectDN = New-Object Org.BouncyCastle.Asn1.X509.X509Name($subjectName)
+    $subjectDN = New-Object Org.BouncyCastle.Asn1.X509.X509Name($SubjectName)
     $certificateGenerator.SetSubjectDN($subjectDN)
 
     $notBefore = [DateTime]::UtcNow.Date
-	$notAfter = $notBefore.AddYears(2)
+    $notAfter = $notBefore.AddYears(2)
 
-	$certificateGenerator.SetNotBefore($notBefore)
-	$certificateGenerator.SetNotAfter($notAfter)
+    $certificateGenerator.SetNotBefore($notBefore)
+    $certificateGenerator.SetNotAfter($notAfter)
 
-	$certificateGenerator.SetPublicKey($subjectKeyPair.Public)
+    $certificateGenerator.SetPublicKey($SubjectKeyPair.Public)
 
     $certificateGenerator |
-        Add-SubjectKeyIdentifier (New-SubjectKeyIdentifier $subjectKeyPair.Public) |
-        Add-AuthorityKeyIdentifier (New-AuthorityKeyIdentifier $issuerName $issuerKeyPair.Public $issuerSerialNumber) |
-        Add-BasicConstraints -IsCertificateAuthority $isCA |
+        Add-SubjectKeyIdentifier (New-SubjectKeyIdentifier $SubjectKeyPair.Public) |
+        Add-AuthorityKeyIdentifier (New-AuthorityKeyIdentifier $IssuerName $IssuerKeyPair.Public $IssuerSerialNumber) |
+        Add-BasicConstraints -IsCertificateAuthority $IsCA |
         Out-Null
 
-    $certificate = $certificateGenerator.Generate($issuerKeyPair.Private, $random)
+    if ($Eku) {
+        $certificateGenerator |
+            Add-ExtendedKeyUsage -Oid $Eku |
+            Out-Null
+    }
 
-    return (ConvertFrom-BouncyCastleCertificate $certificate $subjectKeyPair $subjectName)
+    $certificate = $certificateGenerator.Generate($IssuerKeyPair.Private, $Random)
+
+    return (ConvertFrom-BouncyCastleCertificate $certificate $SubjectKeyPair $SubjectName)
+}
+
+function New-SelfSignedCertificate
+{
+param(
+    [Parameter(Mandatory = $true)]
+    [string] $Name,
+
+    [Parameter(Mandatory = $false)]
+    [string[]] $Eku = $null
+)
+
+    $random = New-SecureRandom
+    $serialNumber = New-SerialNumber
+    $keyPair = New-KeyPair
+
+    New-Certificate -Random $random `
+                    -IssuerName $Name -IssuerKeyPair $keyPair -IssuerSerialNumber $serialNumber `
+                    -SubjectName $Name -SubjectKeyPair $keyPair -SubjectSerialNumber $serialNumber `
+                    -IsCertificateAuthority $false `
+                    -Eku $Eku
+}
+
+function New-CertificateAuthorityCertificate
+{
+param(
+    [Parameter(Mandatory = $true)]
+    [string] $Name,
+
+    [Parameter(Mandatory = $false)]
+    [string[]] $Eku = $null
+)
+
+    $random = New-SecureRandom
+    $serialNumber = New-SerialNumber
+    $keyPair = New-KeyPair
+
+    New-Certificate -Random $random `
+                    -IssuerName $Name -IssuerKeyPair $keyPair -IssuerSerialNumber $serialNumber `
+                    -SubjectName $Name -SubjectKeyPair $keyPair -SubjectSerialNumber $serialNumber `
+                    -IsCertificateAuthority $true `
+                    -Eku $Eku
+}
+
+function New-IssuedCertificate
+{
+param(
+    [Parameter(Mandatory = $true)]
+    [System.Security.Cryptography.X509Certificates.X509Certificate2] $IssuerCertificate,
+
+    [Parameter(Mandatory = $true)]
+    [string] $Name,
+
+    [Parameter(Mandatory = $false)]
+    [string[]] $Eku = $null
+)
+
+    $issuerName = $IssuerCertificate.Subject
+    $issuerKeyPair = ConvertTo-BouncyCastleKeyPair $IssuerCertificate.PrivateKey
+    $issuerSerialNumber = New-Object Org.BouncyCastle.Math.BigInteger(,$IssuerCertificate.GetSerialNumber())
+
+    $random = New-SecureRandom
+    $subjectSerialNumber = New-SerialNumber
+    $subjectKeyPair = New-KeyPair
+
+    New-Certificate -Random $random `
+                    -IssuerName $issuerName -IssuerKeyPair $issuerKeyPair -IssuerSerialNumber $issuerSerialNumber `
+                    -SubjectName $Name -SubjectKeyPair $subjectKeyPair -SubjectSerialNumber $subjectSerialNumber `
+                    -IsCertificateAuthority $false `
+                    -Eku $Eku
 }
