@@ -199,14 +199,71 @@ param(
     [Parameter(Mandatory = $true, ValueFromPipeline = $true)]
     [Org.BouncyCastle.X509.X509V3CertificateGenerator] $certificateGenerator,
 
-    [Parameter(Position = 0, Mandatory = $false, ValueFromPipeline = $false)]
-    [string[]] $Oid = $null
+    [Parameter(Mandatory = $true, ValueFromPipeline = $false, ParameterSetName = 'Oid')]
+    [string[]] $Oid = $null,
+
+    [Parameter(Mandatory = $true, ValueFromPipeline = $false, ParameterSetName = 'AnyPurpose')]
+    [switch] $AnyPurpose,
+
+    [Parameter(Mandatory = $false, ValueFromPipeline = $false, ParameterSetName = 'Named')]
+    [switch] $ServerAuthentication,
+
+    [Parameter(Mandatory = $false, ValueFromPipeline = $false, ParameterSetName = 'Named')]
+    [switch] $ClientAuthentication,
+
+    [Parameter(Mandatory = $false, ValueFromPipeline = $false, ParameterSetName = 'Named')]
+    [switch] $CodeSigning,
+
+    [Parameter(Mandatory = $false, ValueFromPipeline = $false, ParameterSetName = 'Named')]
+    [switch] $EmailProtection,
+
+    [Parameter(Mandatory = $false, ValueFromPipeline = $false, ParameterSetName = 'Named')]
+    [switch] $IpsecEndSystem,
+
+    [Parameter(Mandatory = $false, ValueFromPipeline = $false, ParameterSetName = 'Named')]
+    [switch] $IpsecTunnel,
+
+    [Parameter(Mandatory = $false, ValueFromPipeline = $false, ParameterSetName = 'Named')]
+    [switch] $IpsecUser,
+
+    [Parameter(Mandatory = $false, ValueFromPipeline = $false, ParameterSetName = 'Named')]
+    [switch] $TimeStamping,
+
+    [Parameter(Mandatory = $false, ValueFromPipeline = $false, ParameterSetName = 'Named')]
+    [switch] $OcspSigning,
+
+    [Parameter(Mandatory = $false, ValueFromPipeline = $false, ParameterSetName = 'Named')]
+    [switch] $SmartCardLogon
 )
 
-    [Org.BouncyCastle.Asn1.Asn1Object[]] $usages = @()
-    $Oid | % { $usages += New-Object Org.BouncyCastle.Asn1.DerObjectIdentifier($_) }
-    $extendedKeyUsage = New-Object Org.BouncyCastle.Asn1.X509.ExtendedKeyUsage(,$usages)
+    $usages = switch ($PSCmdlet.ParameterSetName) {
+        "Oid" {
+            [Org.BouncyCastle.Asn1.Asn1Object[]] $usages = @()
+            $Oid | % { $usages += New-Object Org.BouncyCastle.Asn1.DerObjectIdentifier($_) }
+            $usages
+        }
 
+        "AnyPurpose" {
+            @( [Org.BouncyCastle.Asn1.X509.KeyPurposeID]::AnyExtendedKeyUsage )
+        }
+
+        "Named" {
+            $usages = @()
+            if ($ServerAuthentication) { $usages += [Org.BouncyCastle.Asn1.X509.KeyPurposeID]::IdKPServerAuth }
+            if ($ClientAuthentication) { $usages += [Org.BouncyCastle.Asn1.X509.KeyPurposeID]::IdKPClientAuth }
+            if ($CodeSigning) { $usages += [Org.BouncyCastle.Asn1.X509.KeyPurposeID]::IdKPCodeSigning }
+            if ($EmailProtection) { $usages += [Org.BouncyCastle.Asn1.X509.KeyPurposeID]::IdKPEmailProtection }
+            if ($IpsecEndSystem) { $usages += [Org.BouncyCastle.Asn1.X509.KeyPurposeID]::IdKPIpsecEndSystem }
+            if ($IpsecTunnel) { $usages += [Org.BouncyCastle.Asn1.X509.KeyPurposeID]::IdKPIpsecTunnel }
+            if ($IpsecUser) { $usages += [Org.BouncyCastle.Asn1.X509.KeyPurposeID]::IdKPIpsecUser }
+            if ($TimeStamping) { $usages += [Org.BouncyCastle.Asn1.X509.KeyPurposeID]::IdKPTimeStamping }
+            if ($OcspSigning) { $usages += [Org.BouncyCastle.Asn1.X509.KeyPurposeID]::IdKPOcspSigning }
+            if ($SmartCardLogon) { $usages += [Org.BouncyCastle.Asn1.X509.KeyPurposeID]::IdKPSmartCardLogon }
+            $usages
+        }
+    }
+
+    $extendedKeyUsage = New-Object Org.BouncyCastle.Asn1.X509.ExtendedKeyUsage(,$usages)
     $certificateGenerator.AddExtension(
         [Org.BouncyCastle.Asn1.X509.X509Extensions]::ExtendedKeyUsage.Id,
         $false,
