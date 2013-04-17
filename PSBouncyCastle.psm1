@@ -13,13 +13,13 @@ Add-Type -Path (Join-Path $thisFolder $assemblyPath)
 function New-SerialNumber(
     [Org.BouncyCastle.Security.SecureRandom] $random)
 {
-	$serialNumber =
-		[Org.BouncyCastle.Utilities.BigIntegers]::CreateRandomInRange(
-			[Org.BouncyCastle.Math.BigInteger]::One,
-			[Org.BouncyCastle.Math.BigInteger]::ValueOf([Int64]::MaxValue),
-			$random)
+    $serialNumber =
+        [Org.BouncyCastle.Utilities.BigIntegers]::CreateRandomInRange(
+            [Org.BouncyCastle.Math.BigInteger]::One,
+            [Org.BouncyCastle.Math.BigInteger]::ValueOf([Int64]::MaxValue),
+            $random)
 	
-	return $serialNumber
+    return $serialNumber
 }
 
 function New-CertificateGenerator
