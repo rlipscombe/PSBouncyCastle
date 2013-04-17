@@ -219,6 +219,33 @@ param(
     return $certificateGenerator
 }
 
+function Add-SubjectAlternativeName
+{
+[CmdletBinding()]
+param(
+    [Parameter(Mandatory = $true, ValueFromPipeline = $true)]
+    [Org.BouncyCastle.X509.X509V3CertificateGenerator] $CertificateGenerator,
+
+    [Parameter(Mandatory = $true)]
+    [string[]] $DnsName
+)
+
+    $names = $DnsName |
+        foreach {
+            New-Object Org.BouncyCastle.Asn1.X509.GeneralName(
+                [Org.BouncyCastle.Asn1.X509.GeneralName]::DnsName, $_)
+            }
+
+    $extension = New-Object Org.BouncyCastle.Asn1.DerSequence($names)
+
+    $CertificateGenerator.AddExtension(
+        [Org.BouncyCastle.Asn1.X509.X509Extensions]::SubjectAlternativeName.Id,
+        $false,
+        $extension)
+
+    return $CertificateGenerator
+}
+
 function Add-ExtendedKeyUsage
 {
 [CmdletBinding()]
