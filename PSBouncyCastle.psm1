@@ -1,4 +1,8 @@
-﻿$thisFolder = Split-Path $script:MyInvocation.MyCommand.Path
+﻿# PowerShell module for using the cryptography libraries from the Legion of the Bouncy Castle.
+# Copyright (c) 2013 Roger Lipscombe. MIT license.
+
+# Assumes that you've got the NuGet package for BouncyCastle.Crypto installed in 'packages'
+$thisFolder = Split-Path $script:MyInvocation.MyCommand.Path
 $assemblyPath = switch -wildcard ($PSVersionTable.CLRVersion) {
     "4.0.*" { 'packages\BouncyCastle.1.7.0\lib\Net40-Client\BouncyCastle.Crypto.dll' }
     "2.0.*" { 'packages\BouncyCastle.1.7.0\lib\Net20\BouncyCastle.Crypto.dll' }
