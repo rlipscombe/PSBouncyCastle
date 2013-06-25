@@ -484,12 +484,12 @@ param(
 )
 
     $signatureAlgorithm = 'SHA256WithRSA'
-	$subjectDN = New-X509Name $Name
-	$keyPair = New-KeyPair
+    $subjectDN = New-X509Name $Name
+    $keyPair = New-KeyPair
     $attributes = $null
 
-	New-Object Org.BouncyCastle.Pkcs.Pkcs10CertificationRequest(
-		$signatureAlgorithm, $subjectDN, $keyPair.Public, $attributes, $keyPair.Private)
+    New-Object Org.BouncyCastle.Pkcs.Pkcs10CertificationRequest(
+        $signatureAlgorithm, $subjectDN, $keyPair.Public, $attributes, $keyPair.Private)
 }
 
 function Save-DerEncoded
@@ -502,7 +502,7 @@ param(
     [string] $OutputFile
 )
 
-	$bytes = $CertificationRequest.GetDerEncoded()
-	$path = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($OutputFile)
-	[System.IO.File]::WriteAllBytes($path, $bytes)
+    $bytes = $CertificationRequest.GetDerEncoded()
+    $path = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($OutputFile)
+    [System.IO.File]::WriteAllBytes($path, $bytes)
 }
