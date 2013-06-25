@@ -326,6 +326,16 @@ param(
     return $certificateGenerator
 }
 
+function New-X509Name
+{
+param(
+    [Parameter(Mandatory = $true)]
+    [string] $Name
+)
+
+    New-Object Org.BouncyCastle.Asn1.X509.X509Name($Name)
+}
+
 function New-Certificate
 {
 param(
@@ -365,10 +375,10 @@ param(
     $signatureAlgorithm = "SHA256WithRSA"
     $certificateGenerator.SetSignatureAlgorithm($signatureAlgorithm)
 
-    $issuerDN = New-Object Org.BouncyCastle.Asn1.X509.X509Name($IssuerName)
+    $issuerDN = New-X509Name($IssuerName)
     $certificateGenerator.SetIssuerDN($issuerDN)
 
-    $subjectDN = New-Object Org.BouncyCastle.Asn1.X509.X509Name($SubjectName)
+    $subjectDN = New-X509Name($SubjectName)
     $certificateGenerator.SetSubjectDN($subjectDN)
 
     $notBefore = [DateTime]::UtcNow.Date
@@ -464,4 +474,35 @@ param(
                     -SubjectName $Name -SubjectKeyPair $subjectKeyPair -SubjectSerialNumber $subjectSerialNumber `
                     -IsCertificateAuthority $false `
                     -Eku $Eku
+}
+
+function New-CertificateRequest
+{
+param(
+    [Parameter(Mandatory = $true)]
+    [string] $Name
+)
+
+    $signatureAlgorithm = 'SHA256WithRSA'
+	$subjectDN = New-X509Name $Name
+	$keyPair = New-KeyPair
+    $attributes = $null
+
+	New-Object Org.BouncyCastle.Pkcs.Pkcs10CertificationRequest(
+		$signatureAlgorithm, $subjectDN, $keyPair.Public, $attributes, $keyPair.Private)
+}
+
+function Save-DerEncoded
+{
+param(
+    [Parameter(Mandatory = $true, ValueFromPipeline = $true)]
+    [Org.BouncyCastle.Asn1.Pkcs.CertificationRequest] $CertificationRequest,
+
+    [Parameter(Mandatory = $true)]
+    [string] $OutputFile
+)
+
+	$bytes = $CertificationRequest.GetDerEncoded()
+	$path = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($OutputFile)
+	[System.IO.File]::WriteAllBytes($path, $bytes)
 }
