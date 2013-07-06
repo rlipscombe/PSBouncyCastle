@@ -506,3 +506,75 @@ param(
     $path = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($OutputFile)
     [System.IO.File]::WriteAllBytes($path, $bytes)
 }
+
+function QualifyPath($Path)
+{
+    return $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($Path)
+}
+
+function SplitString([string] $String, [int] $Length)
+{
+    $stringLength = $String.Length
+    for ($i = 0; $i -lt $stringLength; $i += $Length)
+    {
+        if (($i + $Length) -le $stringLength) {
+            Write-Output $String.Substring($i, $Length)
+        } else {
+            Write-Output $String.Substring($i)
+        }
+    }
+}
+
+function Export-Certificate
+{
+param(
+    [Parameter(Mandatory = $true)]
+    [System.Security.Cryptography.X509Certificates.X509Certificate2] $Certificate,
+
+    [Parameter(Mandatory = $true)]
+    [string] $OutputFile,
+
+    [Parameter(Mandatory = $false)]
+    [ValidateSet('PEM', 'DER')]
+    [string] $OutputFormat = 'DER'
+)
+
+    $outputPath = Qualify-Path $OutputFile
+
+    $bytes = $Certificate.Export('Cert')
+
+    switch ($OutputFormat)
+    {
+        'DER' { [System.IO.File]::WriteAllBytes($outputPath, $bytes) }
+        'PEM' {
+            $encoded = [Convert]::ToBase64String($bytes)
+            $lines = SplitString -String $encoded -Length 65
+            $content = "-----BEGIN CERTIFICATE-----`r`n"
+            $lines | % { $content += $_ + "`r`n" }
+            $content += "-----END CERTIFICATE-----`r`n"
+            [System.IO.File]::WriteAllText($outputPath, $content)
+        }
+    }
+}
+
+Export-ModuleMember New-SerialNumber
+Export-ModuleMember New-CertificateGenerator
+Export-ModuleMember New-SecureRandom
+Export-ModuleMember New-KeyPair
+Export-ModuleMember ConvertFrom-BouncyCastleCertificate
+Export-ModuleMember ConvertTo-BouncyCastleKeyPair
+Export-ModuleMember New-AuthorityKeyIdentifier
+Export-ModuleMember Add-AuthorityKeyIdentifier
+Export-ModuleMember New-SubjectKeyIdentifier
+Export-ModuleMember Add-SubjectKeyIdentifier
+Export-ModuleMember Add-BasicConstraints
+Export-ModuleMember Add-SubjectAlternativeName
+Export-ModuleMember Add-ExtendedKeyUsage
+Export-ModuleMember New-X509Name
+Export-ModuleMember New-Certificate
+Export-ModuleMember New-SelfSignedCertificate
+Export-ModuleMember New-CertificateAuthorityCertificate
+Export-ModuleMember New-IssuedCertificate
+Export-ModuleMember New-CertificateRequest
+Export-ModuleMember Save-DerEncoded
+Export-ModuleMember Export-Certificate
