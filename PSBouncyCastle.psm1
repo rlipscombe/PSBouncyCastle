@@ -492,6 +492,8 @@ param(
         $signatureAlgorithm, $subjectDN, $keyPair.Public, $attributes, $keyPair.Private)
 }
 
+# Save a certificate request as a DER file.
+# TODO: Rename this to Export-CertificateRequest
 function Save-DerEncoded
 {
 param(
@@ -512,6 +514,7 @@ function QualifyPath($Path)
     return $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($Path)
 }
 
+# Split a string into lines of a particular length. Used for .PEM export.
 function SplitString([string] $String, [int] $Length)
 {
     $stringLength = $String.Length
