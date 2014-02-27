@@ -505,7 +505,7 @@ param(
 )
 
     $bytes = $CertificationRequest.GetDerEncoded()
-    $path = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($OutputFile)
+    $path = QualifyPath $OutputFile
     [System.IO.File]::WriteAllBytes($path, $bytes)
 }
 
@@ -542,7 +542,7 @@ param(
     [string] $OutputFormat = 'DER'
 )
 
-    $outputPath = Qualify-Path $OutputFile
+    $outputPath = QualifyPath $OutputFile
 
     $bytes = $Certificate.Export('Cert')
 
