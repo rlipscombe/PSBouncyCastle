@@ -528,6 +528,17 @@ function SplitString([string] $String, [int] $Length)
     }
 }
 
+function Test-CertificateAuthority
+{
+param(
+    [Parameter(Mandatory = $true)]
+    [System.Security.Cryptography.X509Certificates.X509Certificate2] $Certificate
+)
+
+    $Extension = $Certificate.Extensions | where { $_.Oid.Value -eq '2.5.29.19' }
+    $Extension.CertificateAuthority
+}
+
 function Export-Certificate
 {
 param(
@@ -550,11 +561,19 @@ param(
     {
         'DER' { [System.IO.File]::WriteAllBytes($outputPath, $bytes) }
         'PEM' {
+            $prefix = "-----BEGIN CERTIFICATE-----`r`n"
+            $suffix = "-----END CERTIFICATE-----`r`n"
+
+            if (Test-CertificateAuthority $Certificate) {
+                $prefix = "-----BEGIN CA CERTIFICATE-----`r`n"
+                $suffix = "-----END CA CERTIFICATE-----`r`n"
+            }
+
             $encoded = [Convert]::ToBase64String($bytes)
             $lines = SplitString -String $encoded -Length 65
-            $content = "-----BEGIN CERTIFICATE-----`r`n"
+            $content = $prefix
             $lines | % { $content += $_ + "`r`n" }
-            $content += "-----END CERTIFICATE-----`r`n"
+            $content += $suffix
             [System.IO.File]::WriteAllText($outputPath, $content)
         }
     }
