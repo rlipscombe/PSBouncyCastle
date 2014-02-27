@@ -579,6 +579,51 @@ param(
     }
 }
 
+function Export-PrivateKey
+{
+param(
+    [Parameter(Mandatory = $true)]
+    [System.Security.Cryptography.AsymmetricAlgorithm] $PrivateKey,
+
+    [Parameter(Mandatory = $true)]
+    [string] $OutputFile,
+
+    [Parameter(Mandatory = $false)]
+    [ValidateSet('PEM', 'DER')]
+    [string] $OutputFormat = 'DER'
+)
+
+    $outputPath = QualifyPath $OutputFile
+
+    switch ($OutputFormat)
+    {
+        'DER' { Write-Error "OutputFormat DER not supported yet. Sorry." }
+        'PEM' {
+            $keyPair = ConvertTo-BouncyCastleKeyPair -Private $PrivateKey
+            WritePemObject $keyPair.Private $outputPath
+        }
+    }
+}
+
+function WritePemObject
+{
+param(
+    [Parameter(Mandatory = $true)]
+    $Object,
+
+    [Parameter(Mandatory = $true)]
+    $OutputPath
+)
+
+    $w = New-Object System.IO.StreamWriter $OutputPath
+    $pw = New-Object Org.BouncyCastle.OpenSsl.PemWriter $w
+
+    $pw.WriteObject($Object)
+    $pw.Writer.Flush()
+
+    $w.Close()
+}
+
 Export-ModuleMember New-SerialNumber
 Export-ModuleMember New-CertificateGenerator
 Export-ModuleMember New-SecureRandom
@@ -600,3 +645,4 @@ Export-ModuleMember New-IssuedCertificate
 Export-ModuleMember New-CertificateRequest
 Export-ModuleMember Save-DerEncoded
 Export-ModuleMember Export-Certificate
+Export-ModuleMember Export-PrivateKey
