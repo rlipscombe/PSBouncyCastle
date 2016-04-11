@@ -22,13 +22,13 @@ param(
     [Parameter(Mandatory = $false)]
     [Org.BouncyCastle.Security.SecureRandom] $Random = (New-SecureRandom)
 )
-    
+
     $serialNumber =
         [Org.BouncyCastle.Utilities.BigIntegers]::CreateRandomInRange(
             [Org.BouncyCastle.Math.BigInteger]::One,
             [Org.BouncyCastle.Math.BigInteger]::ValueOf([Int64]::MaxValue),
             $random)
-	
+
     return $serialNumber
 }
 
@@ -246,6 +246,61 @@ param(
     return $CertificateGenerator
 }
 
+function Add-KeyUsage
+{
+[CmdletBinding()]
+param (
+    [Parameter(Mandatory = $true, ValueFromPipeline = $true)]
+    [Org.BouncyCastle.X509.X509V3CertificateGenerator] $certificateGenerator,
+
+    [Parameter(Mandatory = $false, ValueFromPipeline = $false)]
+    [switch] $DigitalSignature,
+
+    [Parameter(Mandatory = $false, ValueFromPipeline = $false)]
+    [switch] $NonRepudiation,
+
+    [Parameter(Mandatory = $false, ValueFromPipeline = $false)]
+    [switch] $KeyEncipherment,
+
+    [Parameter(Mandatory = $false, ValueFromPipeline = $false)]
+    [switch] $DataEncipherment,
+
+    [Parameter(Mandatory = $false, ValueFromPipeline = $false)]
+    [switch] $KeyAgreement,
+
+    [Parameter(Mandatory = $false, ValueFromPipeline = $false)]
+    [switch] $KeyCertSign,
+
+    [Parameter(Mandatory = $false, ValueFromPipeline = $false)]
+    [switch] $CrlSign,
+
+    [Parameter(Mandatory = $false, ValueFromPipeline = $false)]
+    [switch] $EncipherOnly,
+
+    [Parameter(Mandatory = $false, ValueFromPipeline = $false)]
+    [switch] $DecipherOnly
+)
+
+    $usages = 0
+    if ($DigitalSignature) { $usages = $usages -bor [Org.BouncyCastle.Asn1.X509.KeyUsage]::DigitalSignature }
+    if ($NonRepudiation) {  $usages = $usages -bor [Org.BouncyCastle.Asn1.X509.KeyUsage]::NonRepudiation }
+    if ($KeyEncipherment) { $usages = $usages -bor [Org.BouncyCastle.Asn1.X509.KeyUsage]::KeyEncipherment }
+    if ($DataEncipherment) { $usages = $usages -bor [Org.BouncyCastle.Asn1.X509.KeyUsage]::DataEncipherment }
+    if ($KeyAgreement) { $usages = $usages -bor [Org.BouncyCastle.Asn1.X509.KeyUsage]::KeyAgreement }
+    if ($KeyCertSign) { $usages = $usages -bor [Org.BouncyCastle.Asn1.X509.KeyUsage]::KeyCertSign }
+    if ($CrlSign) { $usages = $usages -bor [Org.BouncyCastle.Asn1.X509.KeyUsage]::CrlSign }
+    if ($EncipherOnly) { $usages = $usages -bor [Org.BouncyCastle.Asn1.X509.KeyUsage]::EncipherOnly }
+    if ($DecipherOnly) { $usages = $usages -bor [Org.BouncyCastle.Asn1.X509.KeyUsage]::DecipherOnly }
+
+    $keyUsage = New-Object Org.BouncyCastle.Asn1.X509.KeyUsage -ArgumentList $usages
+    $certificateGenerator.AddExtension(
+        [Org.BouncyCastle.Asn1.X509.X509Extensions]::KeyUsage.Id,
+        $true,
+        $keyUsage)
+
+    return $certificateGenerator
+}
+
 function Add-ExtendedKeyUsage
 {
 [CmdletBinding()]
@@ -369,7 +424,7 @@ param(
 )
 
     $certificateGenerator = New-CertificateGenerator
-   
+
     $certificateGenerator.SetSerialNumber($SubjectSerialNumber)
 
     $signatureAlgorithm = "SHA256WithRSA"
@@ -636,6 +691,7 @@ Export-ModuleMember New-SubjectKeyIdentifier
 Export-ModuleMember Add-SubjectKeyIdentifier
 Export-ModuleMember Add-BasicConstraints
 Export-ModuleMember Add-SubjectAlternativeName
+Export-ModuleMember Add-KeyUsage
 Export-ModuleMember Add-ExtendedKeyUsage
 Export-ModuleMember New-X509Name
 Export-ModuleMember New-Certificate
