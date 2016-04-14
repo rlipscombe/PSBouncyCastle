@@ -605,12 +605,23 @@ param(
 
     [Parameter(Mandatory = $false)]
     [ValidateSet('PEM', 'DER')]
-    [string] $OutputFormat = 'DER'
+    [string] $OutputFormat = 'DER',
+
+    [ValidateSet("Cert","Pfx")]
+    [string] $X509ContentType = "Cert",
+
+    [Parameter(Mandatory = $false)]
+    [ValidateNotNull()]
+    [securestring] $Password
 )
 
     $outputPath = QualifyPath $OutputFile
 
-    $bytes = $Certificate.Export('Cert')
+    if ($X509ContentType -eq 'PFX' -and $Password -ne $null) {
+        $bytes = $Certificate.Export($X509ContentType, $Password)
+    } else {
+        $bytes = $Certificate.Export($X509ContentType)
+    }
 
     switch ($OutputFormat)
     {
