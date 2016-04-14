@@ -617,7 +617,7 @@ param(
 
     $outputPath = QualifyPath $OutputFile
 
-    if ($X509ContentType -eq 'PFX' -and $Password -ne $null) {
+    if ($X509ContentType -eq 'Pfx' -and $Password -ne $null) {
         $bytes = $Certificate.Export($X509ContentType, $Password)
     } else {
         $bytes = $Certificate.Export($X509ContentType)
