@@ -82,7 +82,11 @@ param(
     [Org.BouncyCastle.Crypto.AsymmetricCipherKeyPair] $subjectKeyPair,
 
     [Parameter(Mandatory = $true)]
-    [string] $friendlyName
+    [string] $friendlyName,
+
+    # Allows you to specify the random number generator to be used. If not specified, a new one is created.
+    [Parameter(Mandatory = $false)]
+    [Org.BouncyCastle.Security.SecureRandom] $random = (New-SecureRandom)
 )
 
     $store = New-Object Org.BouncyCastle.Pkcs.Pkcs12Store
